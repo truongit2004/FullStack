@@ -1,0 +1,281 @@
+# application-example.yml - Configuration Templates
+
+## Copy file này thành application.yml và điền các giá trị của bạn
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEVELOPMENT ENVIRONMENT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+server:
+  port: 8083
+  servlet:
+    context-path: /
+  shutdown: graceful
+  compression:
+    enabled: true
+    min-response-size: 1024
+
+spring:
+  application:
+    name: Cart-Service
+    version: 0.0.1-SNAPSHOT
+
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost # 👉 Thay đổi nếu Redis ở máy khác
+      port: 6379
+      password: null # 👉 Set password nếu Redis yêu cầu
+      timeout: 2000ms
+      database: 0
+      jedis:
+        pool:
+          max-active: 8 # Số connection tối đa
+          max-idle: 8 # Số connection nhàn tối đa
+          min-idle: 0 # Số connection nhàn tối thiểu
+          max-wait: -1ms # Thời gian chờ tối đa (unlimited)
+
+  # Logging Configuration
+  logging:
+    level:
+      root: INFO
+      com.example.CartService: DEBUG
+      org.springframework.security: DEBUG
+    pattern:
+      console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SERVICE URLS (Inter-Service Communication)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  product-url: http://localhost:8082 # 👉 Product Service
+  order-url: http://localhost:8084 # 👉 Order Service
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# JWT SECURITY CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# 👉 IMPORTANT: Generate a 256-bit Base64 secret
+# Linux/Mac: openssl rand -base64 32
+# Windows PowerShell:
+#   $bytes = New-Object byte[] 32
+#   (New-Object System.Security.Cryptography.RNGCryptoServiceProvider).GetBytes($bytes)
+#   [Convert]::ToBase64String($bytes)
+#
+# Must be at least 32 bytes (256 bits) when decoded from Base64
+#  secret: your-256-bit-secret-key-here-must-be-long-enough-min-32-bytes
+jwt:
+  secret: dGhpcyBpcyBhIHZlcnkgc2VjdXJlIHNlY3JldCBrZXkgZm9yIEpXVCB0b2tlbnMhISE=
+  # JWT claim tên của userId (thường là "sub")
+  user-id-claim: sub
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CART CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+cart:
+  # Thời gian cart tồn tại trong Redis (giây)
+  # Default: 604800 (7 ngày)
+  ttl-seconds: 604800
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACTUATOR (Health Checks)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info # Endpoints được expose qua HTTP
+  endpoint:
+    health:
+      show-details: when-authorized # Chi tiết health chỉ khi authorized
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# PRODUCTION ENVIRONMENT (application-prod.yml)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# spring:
+#   profiles: prod
+#
+# server:
+#   port: 8083
+#   servlet:
+#     context-path: /
+#   ssl:
+#     key-store: classpath:keystore.p12
+#     key-store-password: ${SSL_PASSWORD}
+#     key-store-type: PKCS12
+#   shutdown: graceful
+#   compression:
+#     enabled: true
+#     min-response-size: 1024
+#   tomcat:
+#     threads:
+#       max: 200
+#       min-spare: 10
+#
+# spring:
+#   data:
+#     redis:
+#       host: ${REDIS_HOST:redis.prod.example.com}
+#       port: ${REDIS_PORT:6379}
+#       password: ${REDIS_PASSWORD}
+#       timeout: 2000ms
+#       jedis:
+#         pool:
+#           max-active: 20
+#           max-idle: 10
+#           min-idle: 5
+#
+#   logging:
+#     level:
+#       root: WARN
+#       com.example.CartService: INFO
+#
+# services:
+#   product-url: https://product.prod.example.com
+#   order-url:   https://order.prod.example.com
+#
+# jwt:
+#   secret: ${JWT_SECRET}  # Load from environment variable
+#   user-id-claim: sub
+#
+# cart:
+#   ttl-seconds: 604800
+#
+# management:
+#   endpoints:
+#     web:
+#       exposure:
+#         include: health,metrics
+#   endpoint:
+#     health:
+#       show-details: when-authorized
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENVIRONMENT VARIABLES FOR PRODUCTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Linux/Mac (.env file hoặc export)
+# export REDIS_HOST=redis.prod.example.com
+# export REDIS_PASSWORD=your-redis-password
+# export JWT_SECRET=your-base64-256-bit-secret
+# export SPRING_PROFILES_ACTIVE=prod
+
+# Windows PowerShell
+# $env:REDIS_HOST = "redis.prod.example.com"
+# $env:REDIS_PASSWORD = "your-redis-password"
+# $env:JWT_SECRET = "your-base64-256-bit-secret"
+# $env:SPRING_PROFILES_ACTIVE = "prod"
+
+# Docker/Kubernetes
+# docker run -e REDIS_HOST=redis -e REDIS_PASSWORD=secret -e JWT_SECRET=secret cartservice:latest
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# ALTERNATIVE CONFIGURATIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# 1️⃣ REDIS WITH AUTH
+# redis:
+#   host: localhost
+#   port: 6379
+#   password: your-redis-password
+#   ssl: false
+#   timeout: 2000ms
+
+# 2️⃣ REDIS SENTINEL (High Availability)
+# redis:
+#   sentinel:
+#     master: mymaster
+#     nodes:
+#       - sentinel1:26379
+#       - sentinel2:26379
+#       - sentinel3:26379
+
+# 3️⃣ REDIS CLUSTER
+# redis:
+#   cluster:
+#     nodes:
+#       - redis1:6379
+#       - redis2:6379
+#       - redis3:6379
+
+# 4️⃣ MULTIPLE SERVICE URLS (Load Balancing)
+# services:
+#   product-url: http://product-lb.example.com
+#   order-url:   http://order-lb.example.com
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# NOTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ⚠️ IMPORTANT SECURITY GUIDELINES:
+#
+# 1. JWT Secret:
+#    - NEVER commit actual secrets to git
+#    - Use environment variables in production
+#    - Minimum 256 bits (32 bytes) when decoded
+#    - Generate using: openssl rand -base64 32
+#
+# 2. Redis Password:
+#    - Set a strong password in production
+#    - Use environment variables: ${REDIS_PASSWORD}
+#    - Enable SSL/TLS for remote Redis
+#
+# 3. Service URLs:
+#    - Use HTTPS in production
+#    - Implement proper SSL certificates
+#    - Use service discovery (Consul, Eureka) if available
+#
+# 4. Logging:
+#    - Set to WARN/ERROR in production
+#    - Use centralized logging (ELK, Splunk)
+#    - Don't log sensitive information
+#
+# 5. SSL/TLS:
+#    - Generate certificate: keytool -genkeypair -alias tomcat -keyalg RSA -keystore keystore.p12 -storetype PKCS12
+#    - Update server.ssl.key-store and password
+#
+# ✅ TESTING CHECKLIST:
+#
+# [ ] Redis connection successful
+# [ ] Service can start without errors
+# [ ] JWT validation working
+# [ ] API endpoints accessible with valid token
+# [ ] Validation errors returned for invalid input
+# [ ] Product Service integration working
+# [ ] Order Service integration working
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# QUICK START GUIDE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# 1️⃣ Generate JWT Secret
+# openssl rand -base64 32
+
+# 2️⃣ Copy this file to application.yml
+# cp application-example.yml src/main/resources/application.yml
+
+# 3️⃣ Update values in application.yml
+# - jwt.secret (generated in step 1)
+# - services.product-url (if different from default)
+# - services.order-url (if different from default)
+# - spring.data.redis.* (if Redis not on localhost:6379)
+
+# 4️⃣ Start Redis
+# docker run -d -p 6379:6379 redis:latest
+
+# 5️⃣ Run application
+# mvn spring-boot:run
+
+# 6️⃣ Verify health
+# curl http://localhost:8083/actuator/health
+

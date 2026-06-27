@@ -1,0 +1,49 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: CartService
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      # password: yourpassword   # bỏ comment nếu Redis có password
+      timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+  instance:
+    prefer-ip-address: true
+logging:
+  level:
+    root: INFO
+    com.example.CartService: DEBUG
+
+# URLs của các service khác
+services:
+  product-url: ${SERVICES_PRODUCT_URL:http://localhost:8082}
+  order-url:   ${SERVICES_ORDER_URL:http://localhost:8084}
+  inventory-url: ${SERVICES_INVENTORY_URL:http://localhost:8086}
+
+# JWT — phải dùng cùng secret với AuthService/các service khác
+# Secret phải là HEX encoded và ít nhất 256 bit (32 byte)
+jwt:
+  secret: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+  # claim chứa userId trong token (thường là "sub" hoặc "userId")
+  user-id-claim: sub
+
+# Thời gian cart tồn tại trong Redis (giây) — 7 ngày
+cart:
+  ttl-seconds: 604800

@@ -1,0 +1,140 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+logs/
+*.log.*
+
+# Gradle/Maven
+target/
+build/
+.gradle/
+gradle-app.setting
+gradlew.bat
+gradle/
+!gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+*~
+.vscode/
+*.code-workspace
+.DS_Store
+
+# IDE Run Configurations
+.run/
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# Spring Boot
+*.jar
+!pom.xml
+application-local.yml
+application-dev.yml
+application-test.yml
+
+# Configuration Files (Secrets)
+application.yml          # Don't commit actual config with secrets
+application-prod.yml     # Production config with secrets
+.env                     # Environment variables file
+.env.local               # Local environment overrides
+.env.*.local             # Environment-specific overrides
+
+# Sensitive Files
+*.p12                    # SSL Certificate
+*.jks                    # Java Keystore
+*.pem                    # PEM Keys
+keystore                 # Keystore files
+private_key*             # Private keys
+
+# Redis
+dump.rdb                 # Redis snapshot
+*.aof                    # Redis AOF file
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Node modules (if using any npm scripts)
+node_modules/
+npm-debug.log
+
+# Coverage Reports
+jacoco.exec
+coverage.xml
+.coverage
+htmlcov/
+
+# Temporary Files
+*.bak
+*.tmp
+*.temp
+*~
+
+# System Files
+.checkstyle
+.factorypath
+
+# Compiled/Generated
+out/
+bin/
+*.class
+
+# Package Files
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Javadoc
+javadoc/
+docs/
+
+# IntelliJ IDEA specific files not needed in git
+*.iml
+*.iws
+*.ipr
+.idea/
+
+# Eclipse IDE
+.classpath
+.project
+.settings/
+
+# NetBeans
+nbactions.xml
+nb-configuration.xml
+.nb-gradle/
+
+# VS Code
+.vscode/
+launch.json
+settings.json
+
+# Misc
+*.swp
+*.swo
+*~
+.#*
+\#*#
+

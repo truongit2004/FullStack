@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông báo hoàn trả hàng</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+        .container { width: 80%; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; }
+        .header { text-align: center; color: #e67e22; }
+        .content { margin-top: 20px; }
+        .footer { margin-top: 30px; font-size: 0.9em; color: #777; text-align: center; }
+        .amount { font-weight: bold; color: #e74c3c; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="header">Chào <span th:text="${name}">Khách hàng</span>!</h2>
+        <div class="content">
+            <p>Chúng tôi xin thông báo đơn hàng mã số <strong>#<span th:text="${orderId}">ORDER_ID</span></strong> của quý khách đã được xử lý hoàn trả hàng thành công.</p>
+            <p>Số tiền <span class="amount"><span th:text="${amount}">0</span> VND</span> đã được chúng tôi ghi nhận và đơn hàng đã được chuyển về trạng thái chờ xử lý (Pending).</p>
+            <p>Cảm ơn quý khách đã tin dùng dịch vụ của chúng tôi!</p>
+        </div>
+        <div class="footer">
+            <p>Đây là email tự động, vui lòng không trả lời.</p>
+            <p>&copy; 2026 Admin - Antigravity E-Commerce</p>
+        </div>
+    </div>
+</body>
+</html>

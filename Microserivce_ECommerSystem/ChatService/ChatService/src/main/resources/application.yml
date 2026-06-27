@@ -1,0 +1,22 @@
+server:
+  port: 8092
+
+spring:
+  application:
+    name: chat-service
+  data:
+    mongodb:
+      host: ${MONGO_HOST:localhost}
+      port: ${MONGO_PORT:27017}
+      database: ${MONGO_DATABASE:chat_service_db}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# Because ChatService doesn't involve generic Feign inter-relations right now, 
+# and relies heavily on STOMP over Websocket, we won't configure robust Security Filter exactly like REST
+# However CORS should be allowed for standard WebSocket connections

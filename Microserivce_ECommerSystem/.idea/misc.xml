@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/ProductService/pom.xml" />
+        <option value="$PROJECT_DIR$/OrderService/OrderService/pom.xml" />
+        <option value="$PROJECT_DIR$/ProductService/ProductService/pom.xml" />
+        <option value="$PROJECT_DIR$/Eureka/Eureka/pom.xml" />
+        <option value="$PROJECT_DIR$/API Gateway/API-Gateway/pom.xml" />
+        <option value="$PROJECT_DIR$/User Service/User-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/Auth Service/Auth-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/CartService/CartService/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_21" project-jdk-name="temurin-21" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+</project>
