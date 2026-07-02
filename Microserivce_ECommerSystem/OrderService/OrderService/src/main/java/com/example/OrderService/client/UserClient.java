@@ -1,5 +1,6 @@
 package com.example.OrderService.client;
 
+import com.example.OrderService.dto.UserResponseDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,5 +9,5 @@ import org.springframework.web.bind.annotation.PathVariable;
 public interface UserClient {
 
     @GetMapping("/{id}")
-    Object getUserById(@PathVariable("id") String id); // Dùng String để khớp với UUID hoặc Long bên User Service
+    UserResponseDTO getUserById(@PathVariable("id") String id); // Dùng String để khớp với UUID hoặc Long bên User Service
 }
