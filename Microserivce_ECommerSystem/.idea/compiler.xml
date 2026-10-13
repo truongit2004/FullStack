@@ -9,6 +9,7 @@
         <module name="EurekaServer" />
         <module name="API-Gateway" />
         <module name="CartService" />
+        <module name="PointService" />
         <module name="Auth-Service" />
       </profile>
       <profile name="Annotation profile for User-Service" enabled="true">
@@ -32,6 +33,7 @@
       <module name="CartService" options="-parameters" />
       <module name="EurekaServer" options="-parameters" />
       <module name="OrderService" options="-parameters" />
+      <module name="PointService" options="-parameters" />
       <module name="ProductService" options="-parameters" />
       <module name="User-Service" options="-parameters" />
     </option>

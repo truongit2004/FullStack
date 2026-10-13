@@ -10,6 +10,7 @@ import com.example.ProductService.exception.ResourceNotFoundException;
 import com.example.ProductService.mapper.ProductMapper;
 import com.example.ProductService.repository.ProductRepository;
 import com.example.ProductService.service.FileStorageService;
+import com.example.ProductService.service.ProductSearchPublisher;
 import com.example.ProductService.service.ProductService;
 import com.example.ProductService.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +26,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.kafka.core.KafkaTemplate;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
@@ -34,13 +33,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ProductServiceImpl implements ProductService {
 
     private static final String DEFAULT_SORT_FIELD = "createdAt";
-    private static final String PRODUCT_TOPIC = "product-topic";
 
     private final ProductRepository  productRepository;
     private final FileStorageService fileStorageService;
     private final InventoryClient    inventoryClient;
-    private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper objectMapper;
+    private final ProductSearchPublisher searchPublisher;
 
     @Override
     @Transactional
@@ -61,7 +58,7 @@ public class ProductServiceImpl implements ProductService {
         ProductResponseDTO response = ProductMapper.toResponse(saved);
         
         // Sync to Search Service via Kafka
-        publishProductToKafka(response, saved.getId());
+        searchPublisher.publishUpsert(response);
 
         return response;
     }
@@ -95,7 +92,9 @@ public class ProductServiceImpl implements ProductService {
         entity.setDescription(dto.getDescription());
         entity.setPrice(dto.getPrice());
         entity.setCategoryId(dto.getCategoryId());
-        return ProductMapper.toResponse(productRepository.save(entity));
+        ProductResponseDTO response = ProductMapper.toResponse(productRepository.save(entity));
+        searchPublisher.publishUpsert(response);
+        return response;
     }
 
     @Override
@@ -107,6 +106,7 @@ public class ProductServiceImpl implements ProductService {
         entity.setDeletedAt(LocalDateTime.now());
         entity.setProductStatus(ProductStatus.INACTIVE);
         productRepository.save(entity);
+        searchPublisher.publishDeleted(id);
     }
 
     @Override
@@ -117,6 +117,7 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
         fileStorageService.delete(entity.getImageUrl());
         productRepository.delete(entity);
+        searchPublisher.publishDeleted(id);
     }
 
     @Override
@@ -178,16 +179,6 @@ public class ProductServiceImpl implements ProductService {
         } else if (Boolean.TRUE.equals(dto.getDeleteImage())) {
             fileStorageService.delete(entity.getImageUrl());
             entity.setImageUrl(null);
-        }
-    }
-
-    private void publishProductToKafka(ProductResponseDTO response, String productId) {
-        try {
-            String message = objectMapper.writeValueAsString(response);
-            kafkaTemplate.send(PRODUCT_TOPIC, productId, message);
-            log.info("Sent product to Kafka for SearchService: {}", productId);
-        } catch (Exception e) {
-            log.error("Failed to send product to Kafka for id {}: {}", productId, e.getMessage());
         }
     }
 }

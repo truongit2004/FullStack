@@ -184,7 +184,7 @@ const OrderHistory = () => {
                                                     )}
                                                     {order.discountAmount > 0 && (
                                                         <>
-                                                            <span style={{ color: 'var(--text-muted)' }}>Giảm giá:</span>
+                                                            <span style={{ color: 'var(--text-muted)' }}>{order.couponCode ? `Mã giảm giá ${order.couponCode}:` : 'Giảm giá (điểm thưởng):'}</span>
                                                             <span style={{ color: 'var(--accent)' }}>-{Number(order.discountAmount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                                                         </>
                                                     )}

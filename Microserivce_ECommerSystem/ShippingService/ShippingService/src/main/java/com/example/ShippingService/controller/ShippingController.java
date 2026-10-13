@@ -1,5 +1,6 @@
 package com.example.ShippingService.controller;
 
+import com.example.ShippingService.dto.ShippingFeeResponseDTO;
 import com.example.ShippingService.dto.ShippingRequestDTO;
 import com.example.ShippingService.dto.ShippingResponseDTO;
 import com.example.ShippingService.dto.ShippingStatusUpdateDTO;
@@ -37,5 +38,10 @@ public class ShippingController {
     @GetMapping("/tracking/{trackingNumber}")
     public ResponseEntity<ShippingResponseDTO> getByTrackingNumber(@PathVariable String trackingNumber) {
         return ResponseEntity.ok(shippingService.getShippingByTrackingNumber(trackingNumber));
+    }
+
+    @GetMapping("/fee")
+    public ResponseEntity<ShippingFeeResponseDTO> calculateFee(@RequestParam String address) {
+        return ResponseEntity.ok(shippingService.calculateFee(address));
     }
 }

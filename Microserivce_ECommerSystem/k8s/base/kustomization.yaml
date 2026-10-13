@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Mọi tài nguyên bên dưới được đặt vào namespace này
+namespace: ecommerce
+
+resources:
+  - namespace.yaml
+  - config.yaml
+  # Secret KHÔNG nằm ở đây: tạo riêng từ secret.yaml (xem secret.example.yaml)
+
+  # Dữ liệu
+  - data/mysql.yaml
+  - data/mongo.yaml
+  - data/redis.yaml
+  - data/elasticsearch.yaml
+  - data/kafka.yaml
+
+  # Hạ tầng
+  - infra/eureka-server.yaml
+  - infra/api-gateway.yaml
+
+  # Service nghiệp vụ
+  - services/user-service.yaml
+  - services/auth-service.yaml
+  - services/product-service.yaml
+  - services/inventory-service.yaml
+  - services/order-service.yaml
+  - services/cart-service.yaml
+  - services/payment-service.yaml
+  - services/notification-service.yaml
+  - services/chat-service.yaml
+  - services/review-service.yaml
+  - services/shipping-service.yaml
+  - services/search-service.yaml
+  - services/point-service.yaml
+  - services/coupon-service.yaml

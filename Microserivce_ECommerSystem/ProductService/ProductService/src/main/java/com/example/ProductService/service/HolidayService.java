@@ -22,6 +22,7 @@ import java.util.Map;
 public class HolidayService {
 
     private final ProductRepository productRepository;
+    private final ProductSearchPublisher searchPublisher;
 
     private static final Map<MonthDay, String> FIXED_HOLIDAYS = new HashMap<>();
 
@@ -63,6 +64,7 @@ public class HolidayService {
         log.info("🔍 Kiểm tra giá ngày lễ: {}. Mục tiêu EventId: {}", isHoliday ? holidayName : "N/A", targetEventId);
 
         boolean dataChanged = false;
+        List<ProductEntity> changed = new java.util.ArrayList<>();
 
         for (ProductEntity product : products) {
             String currentEventId = product.getActiveEventId();
@@ -83,6 +85,7 @@ public class HolidayService {
                 product.setDiscountPercentage(30);
                 product.setActiveEventId(targetEventId);
                 dataChanged = true;
+                changed.add(product);
             } 
             
             // TRƯỜNG HỢP 2: KHÔNG PHẢI NGÀY LỄ
@@ -95,6 +98,7 @@ public class HolidayService {
                     product.setDiscountPercentage(0);
                     product.setActiveEventId(null);
                     dataChanged = true;
+                    changed.add(product);
                 }
             }
         }
@@ -102,6 +106,9 @@ public class HolidayService {
         if (dataChanged) {
             productRepository.saveAll(products);
             log.info("✅ Đã cập nhật xong Database.");
+            // Giá vừa đổi: báo Search Service để kết quả tìm kiếm hiện giá mới
+            changed.forEach(product -> searchPublisher.publishUpsert(
+                    com.example.ProductService.mapper.ProductMapper.toResponse(product)));
         }
     }
 }

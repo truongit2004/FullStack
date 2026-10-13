@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, LogOut, PackageSearch, User, Box, LayoutDashboard } from 'lucide-react';
+import { ShoppingCart, LogOut, PackageSearch, User, Box, LayoutDashboard, Coins, Headset, Ticket } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -51,11 +51,25 @@ const Navbar = () => {
                             <PackageSearch size={20} />
                             Orders
                         </Link>
+                        <Link to="/points" className="nav-link">
+                            <Coins size={20} />
+                            Points
+                        </Link>
                         {user.role === 'ADMIN' && (
-                            <Link to="/admin" className="nav-link" style={{color: 'var(--primary)'}}>
-                                <LayoutDashboard size={20} />
-                                Admin
-                            </Link>
+                            <>
+                                <Link to="/admin" className="nav-link" style={{color: 'var(--primary)'}}>
+                                    <LayoutDashboard size={20} />
+                                    Admin
+                                </Link>
+                                <Link to="/admin/chat" className="nav-link" style={{color: 'var(--primary)'}}>
+                                    <Headset size={20} />
+                                    Support
+                                </Link>
+                                <Link to="/admin/coupons" className="nav-link" style={{color: 'var(--primary)'}}>
+                                    <Ticket size={20} />
+                                    Coupons
+                                </Link>
+                            </>
                         )}
                         <Link to="/profile" className="nav-link" style={{ color: 'var(--accent)', marginLeft: '1rem' }}>
                             <User size={20} />

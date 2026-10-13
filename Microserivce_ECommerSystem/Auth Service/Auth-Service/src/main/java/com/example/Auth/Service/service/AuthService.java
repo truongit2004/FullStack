@@ -1,8 +1,13 @@
 package com.example.Auth.Service.service;
 
+import com.example.Auth.Service.client.NotificationClient;
 import com.example.Auth.Service.client.UserClient;
 import com.example.Auth.Service.dto.AuthRequest;
 import com.example.Auth.Service.dto.AuthResponse;
+import com.example.Auth.Service.dto.ChangePasswordRequest;
+import com.example.Auth.Service.dto.PasswordResetEmailRequest;
+import com.example.Auth.Service.dto.ResetPasswordRequest;
+import com.example.Auth.Service.dto.UpdatePasswordRequest;
 import com.example.Auth.Service.dto.UserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +16,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -20,11 +26,15 @@ import java.util.concurrent.TimeUnit;
 public class AuthService {
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
+    private static final String RESET_OTP_PREFIX = "pwreset:";
+    private static final long RESET_OTP_TTL_SECONDS = 600; // 10 phút
 
     private final UserClient userClient;
+    private final NotificationClient notificationClient;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final StringRedisTemplate redisTemplate;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthResponse register(UserDto request) {
         userClient.createUser(request);
@@ -57,6 +67,71 @@ public class AuthService {
         long ttl = getRemainingTtl(token);
         addToBlacklist(token, ttl);
         log.info("Token revoked successfully (added to blacklist).");
+    }
+
+    /**
+     * Gửi OTP đặt lại mật khẩu qua email. Không tiết lộ email có tồn tại hay
+     * không (luôn trả về thành công) để tránh dò quét danh sách tài khoản.
+     */
+    public void forgotPassword(String email) {
+        UserDto user;
+        try {
+            user = userClient.getUserByEmail(email);
+        } catch (Exception e) {
+            log.warn("Forgot-password requested for unknown email: {}", email);
+            return;
+        }
+        if (user == null) {
+            return;
+        }
+
+        String otp = generateOtp();
+        redisTemplate.opsForValue().set(otpKey(email), otp, RESET_OTP_TTL_SECONDS, TimeUnit.SECONDS);
+
+        try {
+            notificationClient.sendPasswordReset(new PasswordResetEmailRequest(email, user.getUsername(), otp));
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to {}: {}", email, e.getMessage());
+        }
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        String key = otpKey(request.getEmail());
+        String storedOtp = redisTemplate.opsForValue().get(key);
+        if (storedOtp == null || !storedOtp.equals(request.getOtp())) {
+            throw new RuntimeException("Invalid or expired OTP");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new RuntimeException("New password must not be blank");
+        }
+
+        UserDto user = userClient.getUserByEmail(request.getEmail());
+        userClient.updatePassword(user.getId(), new UpdatePasswordRequest(request.getNewPassword()));
+        redisTemplate.delete(key);
+        log.info("Password reset successfully for email: {}", request.getEmail());
+    }
+
+    public void changePassword(String authHeader, ChangePasswordRequest request) {
+        String token = extractBearerToken(authHeader);
+        validateToken(token);
+
+        String username = jwtService.extractUsername(token);
+
+        // Xác thực lại mật khẩu cũ trước khi cho phép đổi
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(username, request.getOldPassword()));
+
+        UserDto user = userClient.getUserByUsername(username);
+        userClient.updatePassword(user.getId(), new UpdatePasswordRequest(request.getNewPassword()));
+        log.info("Password changed successfully for username: {}", username);
+    }
+
+    private String generateOtp() {
+        return String.format("%06d", secureRandom.nextInt(1_000_000));
+    }
+
+    private String otpKey(String email) {
+        return RESET_OTP_PREFIX + email.trim().toLowerCase();
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────

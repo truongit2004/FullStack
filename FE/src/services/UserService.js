@@ -20,6 +20,11 @@ class UserService {
         const res = await axios.delete(`/api/users/${id}`);
         return res.data;
     }
+
+    async updateProfile(id, data) {
+        const res = await axios.put(`/api/users/${id}`, data);
+        return res.data;
+    }
 }
 
 export default new UserService();

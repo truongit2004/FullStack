@@ -23,9 +23,16 @@ class ProductService {
     }
 
     async searchProducts(query) {
-        // Tìm qua filter endpoint
-        const res = await axios.get(`/api/products/filter?name=${encodeURIComponent(query)}&page=0&size=50`);
-        return res.data.content || [];
+        try {
+            // Tìm bằng Search Service (Elasticsearch): xếp theo độ liên quan, không cần gõ dấu, chịu được gõ sai nhẹ
+            const res = await axios.get(`/api/search/products?query=${encodeURIComponent(query)}&page=0&size=50`);
+            return res.data || [];
+        } catch (err) {
+            // Search Service hoặc Elasticsearch đang lỗi: quay về tìm theo tên bằng Product Service (MySQL)
+            console.warn('Search Service unavailable, falling back to product filter', err);
+            const res = await axios.get(`/api/products/filter?name=${encodeURIComponent(query)}&page=0&size=50`);
+            return res.data.content || [];
+        }
     }
 
     async createProduct(formData) {

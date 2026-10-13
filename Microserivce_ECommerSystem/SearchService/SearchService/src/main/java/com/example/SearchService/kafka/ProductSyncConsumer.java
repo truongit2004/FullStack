@@ -1,8 +1,6 @@
 package com.example.SearchService.kafka;
 
-import com.example.SearchService.document.ProductDocument;
-import com.example.SearchService.repository.ProductSearchRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.SearchService.service.ProductIndexSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -13,18 +11,14 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class ProductSyncConsumer {
 
-    private final ProductSearchRepository repository;
-    private final ObjectMapper objectMapper;
+    private final ProductIndexSyncService syncService;
 
     @KafkaListener(topics = "product-topic", groupId = "search-group")
-    public void consume(String message) {
-        try {
-            log.info("Received product event: {}", message);
-            ProductDocument product = objectMapper.readValue(message, ProductDocument.class);
-            repository.save(product);
-            log.info("Synced product to Elasticsearch: {}", product.getId());
-        } catch (Exception e) {
-            log.error("Failed to sync product: {}", e.getMessage());
-        }
+    // Không bắt lỗi ở đây: để lỗi nổi lên cho DefaultErrorHandler (ResilienceConfig) thử lại,
+    // hết số lần thì chuyển tin sang "<topic>.DLT" thay vì âm thầm bỏ mất.
+    // Lưu / xóa theo id nên xử lý lại cùng một tin vẫn an toàn.
+    public void consume(String message) throws Exception {
+        log.info("Received product event: {}", message);
+        syncService.applyEvent(message);
     }
 }

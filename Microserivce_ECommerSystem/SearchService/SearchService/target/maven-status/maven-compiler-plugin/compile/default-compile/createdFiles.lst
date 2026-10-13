@@ -1,0 +1,3 @@
+com\example\SearchService\service\ProductIndexSyncService.class
+com\example\SearchService\service\ProductSearchService.class
+com\example\SearchService\config\ResilienceConfig.class

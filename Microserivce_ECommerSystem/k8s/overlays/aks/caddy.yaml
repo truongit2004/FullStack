@@ -1,0 +1,98 @@
+# Cổng vào HTTPS duy nhất của cluster: Caddy nhận request từ Internet, tự xin và gia hạn chứng chỉ
+# Let's Encrypt, rồi chuyển tiếp vào API Gateway. WebSocket của Chat đi qua được mà không cần cấu hình thêm.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caddy-config
+  namespace: ecommerce
+data:
+  Caddyfile: |
+    {$DOMAIN} {
+        reverse_proxy api-gateway:8085
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: caddy-data
+  namespace: ecommerce
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: caddy
+  namespace: ecommerce
+  labels:
+    app: caddy
+    tier: edge
+spec:
+  replicas: 1
+  # 1 bản: chứng chỉ nằm trên ổ đĩa ReadWriteOnce
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: caddy
+  template:
+    metadata:
+      labels:
+        app: caddy
+        tier: edge
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: caddy
+          image: caddy:2
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          env:
+            - name: DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: ecommerce-config
+                  key: DOMAIN
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/caddy
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          configMap:
+            name: caddy-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: caddy-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: caddy
+  namespace: ecommerce
+  annotations:
+    # Azure gắn tên miền <nhãn>.<vùng>.cloudapp.azure.com vào IP công khai của Service này.
+    # Nhãn phải duy nhất trong vùng và khớp với DOMAIN trong config-patch.yaml.
+    service.beta.kubernetes.io/azure-dns-label-name: ecommerce-truong
+spec:
+  type: LoadBalancer
+  selector:
+    app: caddy
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443

@@ -1,0 +1,11 @@
+# Địa chỉ nhìn từ trình duyệt khi chạy trên AKS. Thay bằng tên miền thật của bạn.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-config
+  namespace: ecommerce
+data:
+  # Tên miền của cổng vào (nhãn DNS trong caddy.yaml + vùng), KHÔNG có https://
+  DOMAIN: ecommerce-truong.southeastasia.cloudapp.azure.com
+  FRONTEND_URL: https://dia-chi-frontend-cua-ban
+  VNP_RETURNURL: https://ecommerce-truong.southeastasia.cloudapp.azure.com/api/payment/vnpay-callback

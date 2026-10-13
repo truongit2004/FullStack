@@ -20,9 +20,11 @@ public class PaymentConsumer {
     private final ObjectMapper objectMapper;
 
     @KafkaListener(topics = "order-placed-topic", groupId = "payment-group")
-    public void consumeOrderEvents(String message) {
+    // Không bắt lỗi ở đây: để lỗi nổi lên cho DefaultErrorHandler (ResilienceConfig) thử lại,
+    // hết số lần thì chuyển tin sang "order-placed-topic.DLT" thay vì âm thầm bỏ mất.
+    public void consumeOrderEvents(String message) throws Exception {
         log.info("🔔 PaymentService nhận tin nhắn từ Kafka: {}", message);
-        try {
+        {
             Map<String, Object> event = objectMapper.readValue(message, Map.class);
             String type = (String) event.get("type");
             String orderId = (String) event.get("orderId");
@@ -40,8 +42,6 @@ public class PaymentConsumer {
                     log.warn("⚠️ Không tìm thấy bản ghi thanh toán cho đơn hàng {} để hoàn tiền.", orderId);
                 }
             }
-        } catch (Exception e) {
-            log.error("❌ Lỗi xử lý sự kiện Kafka trong PaymentService: {}", e.getMessage());
         }
     }
 }

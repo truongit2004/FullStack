@@ -76,6 +76,7 @@ public class OrderMapper {
                 .totalAmount(order.getTotalAmount())
                 .shippingFee(order.getShippingFee())
                 .discountAmount(order.getDiscountAmount())
+                .couponCode(order.getCouponCode())
                 .finalAmount(order.getFinalAmount())
                 .shippingAddress(order.getShippingAddress())
                 .note(order.getNote())

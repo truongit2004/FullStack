@@ -1,6 +1,7 @@
 package com.example.NotificationService.service;
 
 import com.example.NotificationService.dto.NotificationEvent;
+import com.example.NotificationService.dto.PasswordResetEmailRequest;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,24 @@ public class EmailService {
 
     public void sendOrderReturnedEmail(NotificationEvent event) throws MessagingException {
         sendEmail(event, "order-returned", "Thông báo hoàn trả tiền đơn hàng #" + event.getOrderId());
+    }
+
+    public void sendPasswordResetEmail(PasswordResetEmailRequest request) throws MessagingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        Context context = new Context();
+        context.setVariable("name", request.getCustomerName());
+        context.setVariable("otp", request.getOtp());
+
+        String html = templateEngine.process("password-reset", context);
+
+        helper.setTo(request.getEmail());
+        helper.setSubject("Mã xác nhận đặt lại mật khẩu");
+        helper.setText(html, true);
+
+        mailSender.send(message);
+        log.info("Password reset email sent successfully to {}", request.getEmail());
     }
 
     private void sendEmail(NotificationEvent event, String templateName, String subject) throws MessagingException {

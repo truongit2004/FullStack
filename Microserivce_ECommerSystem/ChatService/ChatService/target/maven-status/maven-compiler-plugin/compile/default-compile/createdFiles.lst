@@ -1,0 +1,8 @@
+com\example\ChatService\security\StompPrincipal.class
+com\example\ChatService\service\ChatService.class
+com\example\ChatService\repository\ChatConversationRepository.class
+com\example\ChatService\security\JwtService.class
+com\example\ChatService\entity\ChatConversation.class
+com\example\ChatService\dto\ChatSendRequest.class
+com\example\ChatService\config\StompAuthChannelInterceptor.class
+com\example\ChatService\entity\ChatConversation$ChatConversationBuilder.class

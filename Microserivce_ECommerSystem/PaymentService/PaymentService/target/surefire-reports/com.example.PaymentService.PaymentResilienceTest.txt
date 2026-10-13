@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.example.PaymentService.PaymentResilienceTest
+-------------------------------------------------------------------------------
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 16.87 s -- in com.example.PaymentService.PaymentResilienceTest

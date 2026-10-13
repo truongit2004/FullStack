@@ -22,8 +22,15 @@ public class CustomUserDetailsService implements UserDetailsService {
                 throw new UsernameNotFoundException("User not found with username: " + username);
             }
             return new CustomUserDetails(user);
+        } catch (UsernameNotFoundException e) {
+            throw e;
+        } catch (feign.FeignException.NotFound e) {
+            throw new UsernameNotFoundException("User not found with username: " + username, e);
         } catch (Exception e) {
-            throw new UsernameNotFoundException("Error fetching user from User Service", e);
+            // User Service chết / quá thời gian / ngắt mạch. Không được báo thành "không tìm thấy người dùng":
+            // Spring Security sẽ đổi thành "sai mật khẩu" và người dùng tưởng mình nhập sai.
+            throw new org.springframework.security.authentication.InternalAuthenticationServiceException(
+                    "User Service unavailable", e);
         }
     }
 }

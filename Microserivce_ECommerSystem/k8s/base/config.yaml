@@ -1,0 +1,45 @@
+# Cấu hình KHÔNG bí mật, dùng chung cho mọi service (nạp bằng envFrom).
+# Tên Service trong cluster trùng với tên container trong docker-compose.yml nên các địa chỉ giữ nguyên dạng.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-config
+data:
+  # Eureka
+  EUREKA_HOST: eureka-server
+  # Inventory và Order ghi cứng localhost cho Eureka trong application.yml -> ghi đè bằng biến này
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+  # Đăng ký bằng IP của pod (tên pod không phân giải được từ pod khác)
+  EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+
+  # Kafka (Review Service ghép "${KAFKA_HOST}:9092" nên cần thêm biến SPRING_KAFKA_BOOTSTRAP_SERVERS)
+  KAFKA_HOST: kafka:29092
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+
+  # Redis, MongoDB, Elasticsearch
+  REDIS_HOST: redis
+  SPRING_DATA_REDIS_HOST: redis
+  MONGO_HOST: mongo
+  ELASTICSEARCH_HOST: elasticsearch
+  SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+
+  # MySQL (mật khẩu nằm trong Secret; URL đặt riêng ở từng Deployment vì mỗi service 1 database)
+  SPRING_DATASOURCE_USERNAME: root
+
+  # Địa chỉ gọi thẳng giữa các service (thay cho các chỗ ghi cứng localhost — xem mục "Sửa code")
+  USER_SERVICE_URL: http://user-service:8088
+  ORDER_SERVICE_URL: http://order-service:8084
+  PRODUCT_SERVICE_URL: http://product-service:8082
+  NOTIFICATION_SERVICE_URL: http://notification-service:8090
+  SERVICES_PRODUCT_URL: http://product-service:8082
+  SERVICES_ORDER_URL: http://order-service:8084
+  SERVICES_INVENTORY_URL: http://inventory-service:8086
+
+  # Địa chỉ nhìn từ trình duyệt — overlay ghi đè theo môi trường
+  FRONTEND_URL: http://localhost:5173
+  VNP_RETURNURL: http://localhost:30085/api/payment/vnpay-callback
+
+  # JVM: dùng tối đa 70% bộ nhớ giới hạn của container
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
+  # Xử lý xong request đang chạy rồi mới tắt
+  SERVER_SHUTDOWN: graceful

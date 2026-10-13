@@ -1,92 +1,93 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Send, X, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import chatService from '../services/ChatService';
-import SockJS from 'sockjs-client';
-import Stomp from 'stompjs';
+import chatService, { SUPPORT_ID } from '../services/ChatService';
 
+// Khung chat của KHÁCH HÀNG với bộ phận hỗ trợ. ADMIN trả lời ở trang /admin/chat.
 const ChatWidget = () => {
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [connected, setConnected] = useState(false);
-    const stompClient = useRef(null);
+    const [unread, setUnread] = useState(0);
+    const connection = useRef(null);
     const scrollRef = useRef(null);
+    const isOpenRef = useRef(false);
 
-    const ADMIN_ID = 'admin-support';
+    const isCustomer = user && user.role !== 'ADMIN';
+    const userId = user ? String(user.id) : null;
 
+    const appendMessage = (msg) => {
+        setMessages(prev => (prev.some(m => m.id === msg.id) ? prev : [...prev, msg]));
+    };
+
+    // Giữ kết nối suốt lúc đăng nhập để huy hiệu "tin mới" cập nhật ngay cả khi đang đóng khung chat
     useEffect(() => {
-        if (user && isOpen) {
-            connect();
-            fetchHistory();
-        }
-        return () => disconnect();
-    }, [user, isOpen]);
+        if (!isCustomer || !token) return;
+
+        chatService.getUnread().then(setUnread).catch(() => {});
+
+        connection.current = chatService.connect({
+            token,
+            onStatus: setConnected,
+            onMessage: (msg) => {
+                appendMessage(msg);
+                if (msg.senderId !== SUPPORT_ID) return;
+                if (isOpenRef.current) {
+                    chatService.markRead(userId).catch(() => {});
+                } else {
+                    setUnread(n => n + 1);
+                }
+            }
+        });
+
+        return () => {
+            connection.current?.disconnect();
+            connection.current = null;
+            setMessages([]);
+            setUnread(0);
+        };
+    }, [isCustomer, token, userId]);
+
+    // Mở khung chat: tải lịch sử và đánh dấu đã đọc
+    useEffect(() => {
+        isOpenRef.current = isOpen;
+        if (!isOpen || !isCustomer) return;
+
+        chatService.getChatHistory(userId)
+            .then(history => setMessages(history || []))
+            .catch(err => console.warn('History fetch failed', err));
+        chatService.markRead(userId).then(() => setUnread(0)).catch(() => {});
+    }, [isOpen, isCustomer, userId]);
 
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages]);
-
-    const connect = () => {
-        const socket = new SockJS(`${import.meta.env.VITE_API_URL}/ws`); 
-        stompClient.current = Stomp.over(socket);
-        stompClient.current.debug = null; 
-
-        stompClient.current.connect({}, () => {
-            setConnected(true);
-            stompClient.current.subscribe(`/user/${user.id}/queue/messages`, (message) => {
-                const receivedMsg = JSON.parse(message.body);
-                setMessages(prev => [...prev, receivedMsg]);
-            });
-        }, (error) => {
-            console.error("STOMP connection error", error);
-        });
-    };
-
-    const disconnect = () => {
-        if (stompClient.current) {
-            stompClient.current.disconnect();
-        }
-        setConnected(false);
-    };
-
-    const fetchHistory = async () => {
-        try {
-            const data = await chatService.getChatHistory(user.id, ADMIN_ID);
-            setMessages(data || []);
-        } catch (err) {
-            log.warn("History fetch failed");
-        }
-    };
+    }, [messages, isOpen]);
 
     const handleSend = (e) => {
         e.preventDefault();
-        if (!input.trim() || !connected) return;
-
-        const chatMessage = {
-            senderId: user.id,
-            recipientId: ADMIN_ID,
-            content: input.trim(),
-            timestamp: new Date().toISOString()
-        };
-
-        stompClient.current.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
-        setInput('');
+        const content = input.trim();
+        if (!content || !connected) return;
+        // Server gửi lại chính tin này qua hàng đợi riêng, nên không tự thêm vào danh sách ở đây
+        if (connection.current?.send(content)) {
+            setInput('');
+        }
     };
 
-    if (!user) return null;
+    if (!isCustomer) return null;
 
     return (
         <div className="chat-container">
             {!isOpen && (
-                <button 
+                <button
                     onClick={() => setIsOpen(true)}
                     className="btn btn-primary chat-launcher"
                 >
                     <MessageCircle size={28} />
+                    {unread > 0 && <span className="chat-badge">{unread > 9 ? '9+' : unread}</span>}
                 </button>
             )}
 
@@ -106,7 +107,7 @@ const ChatWidget = () => {
                                 </div>
                             </div>
                         </div>
-                        <X size={20} className="cursor-pointer" onClick={() => setIsOpen(false)} />
+                        <X size={20} style={{ cursor: 'pointer' }} onClick={() => setIsOpen(false)} />
                     </div>
 
                     {/* Message List */}
@@ -116,11 +117,11 @@ const ChatWidget = () => {
                                 Chào bạn! Chúng tôi có thể giúp gì được cho bạn?
                             </div>
                         )}
-                        {messages.map((msg, i) => {
-                            const isMe = msg.senderId === user.id;
+                        {messages.map((msg) => {
+                            const isMe = msg.senderId === userId;
                             return (
-                                <div 
-                                    key={i} 
+                                <div
+                                    key={msg.id}
                                     className={`message-bubble ${isMe ? 'message-sent' : 'message-received'}`}
                                 >
                                     <div className="message-content">{msg.content}</div>
@@ -134,18 +135,19 @@ const ChatWidget = () => {
 
                     {/* Footer / Input */}
                     <form onSubmit={handleSend} className="chat-footer">
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             disabled={!connected}
                             value={input}
+                            maxLength={2000}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Nhập tin nhắn..."
                             className="search-input chat-input"
                         />
-                        <button 
-                            type="submit" 
-                            className="quantity-btn" 
-                            style={{ color: 'var(--primary)' }} 
+                        <button
+                            type="submit"
+                            className="quantity-btn"
+                            style={{ color: 'var(--primary)' }}
                             disabled={!input.trim() || !connected}
                         >
                             <Send size={18} />

@@ -240,6 +240,8 @@ public class CartService {
                     .note(request.getNote())
                     .shippingFee(request.getShippingFee())
                     .discountAmount(request.getDiscountAmount())
+                    .pointsToRedeem(request.getPointsToRedeem())
+                    .couponCode(request.getCouponCode())
                     .build();
 
             // OrderService sẽ thực hiện trừ kho trong Transaction của nó

@@ -1,0 +1,60 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - caddy.yaml
+
+# Đổi tên image sang registry của bạn. Thay "myecommerceacr" bằng tên ACR thật và "v1" bằng tag đã push.
+images:
+  - name: ecommerce/eureka-server
+    newName: myecommerceacr.azurecr.io/ecommerce/eureka-server
+    newTag: v1
+  - name: ecommerce/api-gateway
+    newName: myecommerceacr.azurecr.io/ecommerce/api-gateway
+    newTag: v1
+  - name: ecommerce/user-service
+    newName: myecommerceacr.azurecr.io/ecommerce/user-service
+    newTag: v1
+  - name: ecommerce/auth-service
+    newName: myecommerceacr.azurecr.io/ecommerce/auth-service
+    newTag: v1
+  - name: ecommerce/product-service
+    newName: myecommerceacr.azurecr.io/ecommerce/product-service
+    newTag: v1
+  - name: ecommerce/inventory-service
+    newName: myecommerceacr.azurecr.io/ecommerce/inventory-service
+    newTag: v1
+  - name: ecommerce/order-service
+    newName: myecommerceacr.azurecr.io/ecommerce/order-service
+    newTag: v1
+  - name: ecommerce/cart-service
+    newName: myecommerceacr.azurecr.io/ecommerce/cart-service
+    newTag: v1
+  - name: ecommerce/payment-service
+    newName: myecommerceacr.azurecr.io/ecommerce/payment-service
+    newTag: v1
+  - name: ecommerce/notification-service
+    newName: myecommerceacr.azurecr.io/ecommerce/notification-service
+    newTag: v1
+  - name: ecommerce/chat-service
+    newName: myecommerceacr.azurecr.io/ecommerce/chat-service
+    newTag: v1
+  - name: ecommerce/review-service
+    newName: myecommerceacr.azurecr.io/ecommerce/review-service
+    newTag: v1
+  - name: ecommerce/shipping-service
+    newName: myecommerceacr.azurecr.io/ecommerce/shipping-service
+    newTag: v1
+  - name: ecommerce/search-service
+    newName: myecommerceacr.azurecr.io/ecommerce/search-service
+    newTag: v1
+  - name: ecommerce/point-service
+    newName: myecommerceacr.azurecr.io/ecommerce/point-service
+    newTag: v1
+  - name: ecommerce/coupon-service
+    newName: myecommerceacr.azurecr.io/ecommerce/coupon-service
+    newTag: v1
+
+patches:
+  - path: config-patch.yaml

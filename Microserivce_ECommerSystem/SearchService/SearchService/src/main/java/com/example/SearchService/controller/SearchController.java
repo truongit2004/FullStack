@@ -2,8 +2,13 @@ package com.example.SearchService.controller;
 
 import com.example.SearchService.document.ProductDocument;
 import com.example.SearchService.repository.ProductSearchRepository;
+import com.example.SearchService.service.ProductIndexSyncService;
+import com.example.SearchService.service.ProductSearchService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -13,10 +18,16 @@ import java.util.List;
 public class SearchController {
 
     private final ProductSearchRepository repository;
+    private final ProductSearchService searchService;
+    private final ProductIndexSyncService syncService;
 
+    /** Tìm sản phẩm theo từ khóa, kết quả xếp theo độ liên quan. */
     @GetMapping("/products")
-    public List<ProductDocument> searchProducts(@RequestParam String query) {
-        return repository.findByNameContaining(query);
+    public List<ProductDocument> searchProducts(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return searchService.search(query, page, size);
     }
 
     @GetMapping("/all")
@@ -27,23 +38,14 @@ public class SearchController {
         return repository.findAll(org.springframework.data.domain.PageRequest.of(page, size));
     }
 
+    /** Nạp lại toàn bộ chỉ mục từ Product Service (Gateway chỉ cho ADMIN gọi). */
     @GetMapping("/sync")
     public String syncFromProductService() {
         try {
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-            // Lấy data từ ProductService (cổng 8082)
-            ProductDocument[] products = restTemplate.getForObject("http://localhost:8082/api/products/all", ProductDocument[].class);
-            if (products != null) {
-                int count = 0;
-                for (ProductDocument p : products) {
-                    repository.save(p);
-                    count++;
-                }
-                return "Đã đồng bộ thủ công " + count + " sản phẩm vào Elasticsearch thành công!";
-            }
+            int count = syncService.fullSync();
+            return "Đã đồng bộ " + count + " sản phẩm vào Elasticsearch thành công!";
         } catch (Exception e) {
             return "Lỗi đồng bộ: " + e.getMessage();
         }
-        return "Không có sản phẩm nào để đồng bộ.";
     }
 }

@@ -46,9 +46,28 @@ public class OrderClient {
 
         } catch (CartException e) {
             throw e;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            // Order Service từ chối có lý do (mã giảm giá hết hạn, không đủ điểm, hết hàng...):
+            // chuyển đúng lý do đó cho khách thay vì báo chung chung "không phản hồi"
+            log.warn("Order Service từ chối tạo đơn: {} {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new CartException(extractMessage(e));
         } catch (Exception e) {
             log.error("Lỗi khi gọi Order Service: {}", e.getMessage());
             throw new CartException("Order Service không phản hồi. Vui lòng thử lại.");
         }
+    }
+
+    // Lấy trường "message" trong JSON lỗi của Order Service
+    private String extractMessage(org.springframework.web.client.HttpStatusCodeException e) {
+        try {
+            com.fasterxml.jackson.databind.JsonNode message =
+                    new com.fasterxml.jackson.databind.ObjectMapper().readTree(e.getResponseBodyAsString()).get("message");
+            if (message != null && !message.asText().isBlank()) {
+                return message.asText();
+            }
+        } catch (Exception ignored) {
+            // thân phản hồi không phải JSON
+        }
+        return "Order Service trả về lỗi khi tạo đơn hàng.";
     }
 }

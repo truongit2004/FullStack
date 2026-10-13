@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import productService from '../services/ProductService';
 import orderService from '../services/OrderService';
+import userService from '../services/UserService';
 import { useAuth } from '../context/AuthContext';
 import { LayoutDashboard, ShoppingBag, ListIcon, Settings, Edit, Trash2, PlusCircle, CheckCircle, Truck, PackageCheck, RotateCcw, TrendingUp, Users, DollarSign, Package, Clock } from 'lucide-react';
+
+const ORDER_PAGE_SIZE = 20;
+const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'PAID', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'RETURNED', 'REFUNDED'];
+const EMPTY_ORDER_FILTER = { fromDate: '', toDate: '', status: '' };
+
+// Ngày theo giờ máy người dùng, dạng YYYY-MM-DD cho <input type="date">
+const toDateInput = (date) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
 
 const Admin = () => {
     const { user, token } = useAuth();
@@ -16,6 +27,14 @@ const Admin = () => {
         name: '', price: '', originalPrice: '', description: '', categoryId: '', stockQuantity: '', image: null
     });
     const [categories, setCategories] = useState([]);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+    // Orders tab: bộ lọc đang nhập, bộ lọc đã áp dụng, và phân trang
+    const [orderFilterDraft, setOrderFilterDraft] = useState(EMPTY_ORDER_FILTER);
+    const [orderFilter, setOrderFilter] = useState(EMPTY_ORDER_FILTER);
+    const [orderPage, setOrderPage] = useState(0);
+    const [orderPageInfo, setOrderPageInfo] = useState({ totalPages: 1, totalElements: 0 });
 
 
     useEffect(() => {
@@ -24,7 +43,7 @@ const Admin = () => {
         } else {
             fetchData();
         }
-    }, [activeTab]);
+    }, [activeTab, orderPage, orderFilter]);
 
     const fetchStats = async () => {
         setLoading(true);
@@ -48,11 +67,20 @@ const Admin = () => {
                 const catRes = await productService.getCategories();
                 setCategories(catRes || []);
             } else if (activeTab === 'orders') {
-                const res = await orderService.getAllOrders(0, 50);
+                // Đơn của toàn hệ thống, mới nhất trước; lọc theo ngày đặt (tính trọn ngày) và trạng thái
+                const res = await orderService.filterOrders({
+                    status: orderFilter.status || undefined,
+                    fromDate: orderFilter.fromDate ? `${orderFilter.fromDate}T00:00:00` : undefined,
+                    toDate: orderFilter.toDate ? `${orderFilter.toDate}T23:59:59` : undefined,
+                }, orderPage, ORDER_PAGE_SIZE);
                 setData(res.content || []);
+                setOrderPageInfo({ totalPages: res.totalPages || 1, totalElements: res.totalElements || 0 });
             } else if (activeTab === 'categories') {
                 const res = await productService.getCategories();
                 setData(res || []);
+            } else if (activeTab === 'users') {
+                const res = await userService.getAllUsers();
+                setData(res.content || res || []);
             }
         } catch (err) {
             console.error("Fetch failed", err);
@@ -72,6 +100,20 @@ const Admin = () => {
         }
     };
 
+    const applyOrderFilter = (filter) => {
+        setOrderFilterDraft(filter);
+        setOrderFilter(filter);
+        setOrderPage(0);
+    };
+
+    // days = 1: hôm nay; days = 7: 7 ngày gần nhất (tính cả hôm nay)
+    const applyOrderPreset = (days) => {
+        const to = new Date();
+        const from = new Date();
+        from.setDate(to.getDate() - (days - 1));
+        applyOrderFilter({ ...orderFilterDraft, fromDate: toDateInput(from), toDate: toDateInput(to) });
+    };
+
     const handleDeleteProduct = async (id) => {
         if (!window.confirm("Delete this product?")) return;
         try {
@@ -82,13 +124,62 @@ const Admin = () => {
         }
     };
 
+    const handleDeleteUser = async (id) => {
+        if (!window.confirm("Delete this user? This action cannot be undone.")) return;
+        try {
+            await userService.deleteUser(id);
+            fetchData();
+        } catch (err) {
+            alert(err.response?.data?.message || "Delete failed");
+        }
+    };
+
+    const openAddCategoryModal = () => {
+        setEditingCategory(null);
+        setCategoryForm({ name: '', description: '' });
+        setShowCategoryModal(true);
+    };
+
+    const openEditCategoryModal = (category) => {
+        setEditingCategory(category);
+        setCategoryForm({ name: category.name || '', description: category.description || '' });
+        setShowCategoryModal(true);
+    };
+
+    const handleDeleteCategory = async (id) => {
+        if (!window.confirm("Delete this category?")) return;
+        try {
+            await productService.deleteCategory(id);
+            fetchData();
+        } catch (err) {
+            alert(err.response?.data?.message || "Delete failed. It may still have products assigned.");
+        }
+    };
+
+    const handleCategorySubmit = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingCategory) {
+                await productService.updateCategory(editingCategory.id, categoryForm);
+            } else {
+                await productService.createCategory(categoryForm);
+            }
+            setShowCategoryModal(false);
+            setEditingCategory(null);
+            setCategoryForm({ name: '', description: '' });
+            fetchData();
+        } catch (err) {
+            alert(err.response?.data?.message || "Failed to save category");
+        }
+    };
+
 
     const handleProductSubmit = async (e) => {
         e.preventDefault();
         const formData = new FormData();
         Object.keys(productForm).forEach(key => {
             if (key === 'image' && productForm[key]) {
-                formData.append('image', productForm[key]);
+                formData.append('imageUrl', productForm[key]); // Sửa thành imageUrl để khớp với backend DTO
             } else if (productForm[key] !== null) {
                 formData.append(key, productForm[key]);
             }
@@ -136,6 +227,7 @@ const Admin = () => {
                     <SidebarItem icon={<ShoppingBag size={18}/>} label="Products" active={activeTab === 'products'} onClick={() => setActiveTab('products')} />
                     <SidebarItem icon={<PackageCheck size={18}/>} label="Orders" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
                     <SidebarItem icon={<ListIcon size={18}/>} label="Categories" active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} />
+                    <SidebarItem icon={<Users size={18}/>} label="Users" active={activeTab === 'users'} onClick={() => setActiveTab('users')} />
                 </div>
             </div>
 
@@ -150,10 +242,48 @@ const Admin = () => {
                             {activeTab === 'products' && (
                                 <button className="btn btn-primary" onClick={() => { setEditingProduct(null); setShowModal(true); }}><PlusCircle size={18}/> Add Product</button>
                             )}
+                            {activeTab === 'categories' && (
+                                <button className="btn btn-primary" onClick={openAddCategoryModal}><PlusCircle size={18}/> Add Category</button>
+                            )}
                         </div>
+
+                        {activeTab === 'orders' && (
+                            <form
+                                onSubmit={(e) => { e.preventDefault(); applyOrderFilter(orderFilterDraft); }}
+                                style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.75rem', marginBottom: '1.5rem' }}
+                            >
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>From date</label>
+                                    <input type="date" className="form-input" value={orderFilterDraft.fromDate} max={orderFilterDraft.toDate || undefined}
+                                        onChange={e => setOrderFilterDraft({ ...orderFilterDraft, fromDate: e.target.value })} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>To date</label>
+                                    <input type="date" className="form-input" value={orderFilterDraft.toDate} min={orderFilterDraft.fromDate || undefined}
+                                        onChange={e => setOrderFilterDraft({ ...orderFilterDraft, toDate: e.target.value })} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>Status</label>
+                                    <select className="form-input sort-select" value={orderFilterDraft.status}
+                                        onChange={e => setOrderFilterDraft({ ...orderFilterDraft, status: e.target.value })}>
+                                        <option value="">All</option>
+                                        {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                                <button type="submit" className="btn btn-primary">Apply</button>
+                                <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.1)' }} onClick={() => applyOrderFilter(EMPTY_ORDER_FILTER)}>Reset</button>
+                                <button type="button" className="chip" onClick={() => applyOrderPreset(1)}>Today</button>
+                                <button type="button" className="chip" onClick={() => applyOrderPreset(7)}>Last 7 days</button>
+                                <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                    {orderPageInfo.totalElements} order{orderPageInfo.totalElements === 1 ? '' : 's'}
+                                </span>
+                            </form>
+                        )}
 
                         {loading ? (
                             <div style={{ padding: '4rem', textAlign: 'center' }}>Loading...</div>
+                        ) : activeTab === 'orders' && data.length === 0 ? (
+                            <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>No orders match this filter.</div>
                         ) : (
                             <div className="admin-table-container" style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -168,16 +298,41 @@ const Admin = () => {
                                     <tbody>
                                         {data.map(item => (
                                             <tr key={item.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                                                <td style={{ padding: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.id.substring(0,8)}...</td>
+                                                <td style={{ padding: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{String(item.id).substring(0,8)}...</td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <div style={{ fontWeight: 600 }}>{item.name || `Order ${item.id.substring(0,5)}`}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                        {activeTab === 'orders' ? `User ID: ${item.userId}` : `Cat ID: ${item.categoryId || 'N/A'}`}
-                                                    </div>
+                                                    {activeTab === 'users' ? (
+                                                        <>
+                                                            <div style={{ fontWeight: 600 }}>{item.username}</div>
+                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.email}</div>
+                                                        </>
+                                                    ) : activeTab === 'categories' ? (
+                                                        <>
+                                                            <div style={{ fontWeight: 600 }}>{item.name}</div>
+                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.description || 'No description'}</div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div style={{ fontWeight: 600 }}>{item.name || `Order ${String(item.id).substring(0,5)}`}</div>
+                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                                {activeTab === 'orders' ? `User ID: ${item.userId}` : `Cat ID: ${item.categoryId || 'N/A'}`}
+                                                            </div>
+                                                            {activeTab === 'orders' && item.createdAt && (
+                                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                                    {new Date(item.createdAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     {activeTab === 'products' ? (
                                                         <div style={{ color: 'var(--primary)', fontWeight: 700 }}>${item.price?.toFixed(2)}</div>
+                                                    ) : activeTab === 'users' ? (
+                                                        <span style={{ padding: '0.2rem 0.6rem', background: item.role === 'ADMIN' ? 'rgba(251,191,36,0.15)' : 'rgba(59,130,246,0.1)', color: item.role === 'ADMIN' ? '#fbbf24' : '#60a5fa', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                                                            {item.role}
+                                                        </span>
+                                                    ) : activeTab === 'categories' ? (
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>ID: {item.id}</span>
                                                     ) : (
                                                         <div>
                                                             <span style={{ padding: '0.2rem 0.6rem', background: 'rgba(59,130,246,0.1)', color: '#60a5fa', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
@@ -194,6 +349,21 @@ const Admin = () => {
                                                                 <button onClick={() => openEditModal(item)} className="quantity-btn"><Edit size={16}/></button>
                                                                 <button onClick={() => handleDeleteProduct(item.id)} className="quantity-btn" style={{color:'var(--danger)'}}><Trash2 size={16}/></button>
                                                              </>
+                                                        ) : activeTab === 'categories' ? (
+                                                            <>
+                                                                <button onClick={() => openEditCategoryModal(item)} className="quantity-btn"><Edit size={16}/></button>
+                                                                <button onClick={() => handleDeleteCategory(item.id)} className="quantity-btn" style={{color:'var(--danger)'}}><Trash2 size={16}/></button>
+                                                            </>
+                                                        ) : activeTab === 'users' ? (
+                                                            <button
+                                                                onClick={() => handleDeleteUser(item.id)}
+                                                                className="quantity-btn"
+                                                                style={{color:'var(--danger)'}}
+                                                                disabled={String(item.id) === String(user?.id)}
+                                                                title={String(item.id) === String(user?.id) ? "You can't delete your own account" : 'Delete user'}
+                                                            >
+                                                                <Trash2 size={16}/>
+                                                            </button>
                                                         ) : (
                                                             <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
                                                                 {item.status === 'PENDING' && (
@@ -219,6 +389,20 @@ const Admin = () => {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        )}
+
+                        {activeTab === 'orders' && orderPageInfo.totalPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', marginTop: '1.5rem' }}>
+                                <button className="btn" disabled={loading || orderPage === 0} onClick={() => setOrderPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>
+                                    ← Prev
+                                </button>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                    Page {orderPage + 1} / {orderPageInfo.totalPages}
+                                </span>
+                                <button className="btn" disabled={loading || orderPage + 1 >= orderPageInfo.totalPages} onClick={() => setOrderPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>
+                                    Next →
+                                </button>
                             </div>
                         )}
                     </>
@@ -276,6 +460,29 @@ const Admin = () => {
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                 <button type="button" className="btn" onClick={() => setShowModal(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.1)' }}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>{editingProduct ? 'Update Product' : 'Create Product'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Category Modal */}
+            {showCategoryModal && (
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2rem' }}>
+                        <h2>{editingCategory ? 'Edit Category' : 'Add New Category'}</h2>
+                        <form onSubmit={handleCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
+                            <div className="form-group">
+                                <label>Category Name</label>
+                                <input type="text" className="form-input" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} required />
+                            </div>
+                            <div className="form-group">
+                                <label>Description</label>
+                                <textarea className="form-input" style={{ minHeight: '80px' }} value={categoryForm.description} onChange={e => setCategoryForm({...categoryForm, description: e.target.value})}></textarea>
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="button" className="btn" onClick={() => setShowCategoryModal(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.1)' }}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>{editingCategory ? 'Update Category' : 'Create Category'}</button>
                             </div>
                         </form>
                     </div>

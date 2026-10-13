@@ -20,6 +20,9 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQL8Dialect
 
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST:localhost:9092}
+
 # Feign Client
 product:
   service:
@@ -35,3 +38,59 @@ eureka:
 jwt:
   secret: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
   expiration: 3600000
+
+# ── Chống lỗi lan truyền khi gọi service khác ────────────────────────────────
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        # Xét 10 lời gọi gần nhất; có từ 5 lời gọi trở lên mà >= 50% lỗi thì NGẮT MẠCH:
+        # ngừng gọi service đó, trả lỗi ngay thay vì bắt người dùng chờ hết timeout.
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        # Sau 20 giây cho thử lại 2 lời gọi; thành công thì đóng mạch, lỗi thì ngắt tiếp.
+        wait-duration-in-open-state: 20s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        # Lỗi 4xx là lỗi nghiệp vụ (không tìm thấy, sai dữ liệu...), không phải service chết
+        ignore-exceptions:
+          - feign.FeignException$FeignClientException
+    instances:
+      productService:
+        base-config: default
+      inventoryService:
+        base-config: default
+      userService:
+        base-config: default
+      shippingService:
+        base-config: default
+      pointService:
+        base-config: default
+      couponService:
+        base-config: default
+  retry:
+    configs:
+      default:
+        # Chỉ gắn @Retry cho lời gọi an toàn khi lặp lại (đọc dữ liệu, hoặc thao tác tự chống trùng)
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - feign.RetryableException                 # không kết nối được / quá thời gian chờ
+          - feign.FeignException$ServiceUnavailable  # 503
+          - feign.FeignException$BadGateway          # 502
+          - feign.FeignException$GatewayTimeout      # 504
+    instances:
+      productService:
+        base-config: default
+      inventoryService:
+        base-config: default
+      userService:
+        base-config: default
+      shippingService:
+        base-config: default
+      pointService:
+        base-config: default
+      couponService:
+        base-config: default

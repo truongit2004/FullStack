@@ -2,6 +2,7 @@ package com.example.ShippingService.service.impl;
 
 import com.example.ShippingService.client.OrderClient;
 import com.example.ShippingService.dto.ExternalOrderResponseDTO;
+import com.example.ShippingService.dto.ShippingFeeResponseDTO;
 import com.example.ShippingService.dto.ShippingRequestDTO;
 import com.example.ShippingService.dto.ShippingResponseDTO;
 import com.example.ShippingService.entity.ShippingEntity;
@@ -10,6 +11,7 @@ import com.example.ShippingService.exception.ResourceNotFoundException;
 import com.example.ShippingService.mapper.ShippingMapper;
 import com.example.ShippingService.repository.ShippingRepository;
 import com.example.ShippingService.service.ShippingService;
+import com.example.ShippingService.util.ShippingFeeCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class ShippingServiceImpl implements ShippingService {
 
     private final ShippingRepository shippingRepository;
     private final OrderClient orderClient;
+    private final ShippingFeeCalculator shippingFeeCalculator;
 
     @Override
     @Transactional
@@ -84,6 +87,11 @@ public class ShippingServiceImpl implements ShippingService {
         return shippingRepository.findByTrackingNumber(trackingNumber)
                 .map(ShippingMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("No shipping record for Tracking Number: " + trackingNumber));
+    }
+
+    @Override
+    public ShippingFeeResponseDTO calculateFee(String address) {
+        return shippingFeeCalculator.calculate(address);
     }
 
     // --- Private Helper Methods ---

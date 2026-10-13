@@ -34,6 +34,8 @@ public class OrderEntity {
     private BigDecimal totalAmount;    // tổng tiền sản phẩm
     private BigDecimal shippingFee;    // phí ship
     private BigDecimal discountAmount; // giảm giá
+    // Mã giảm giá đã dùng cho đơn (null = không dùng). Đơn có mã thì không được tích điểm khi giao thành công.
+    private String couponCode;
     private BigDecimal finalAmount;    // totalAmount - discountAmount + shippingFee
     @Column(name = "total_price")
     private BigDecimal totalPrice;

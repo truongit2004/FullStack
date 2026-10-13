@@ -19,6 +19,7 @@ public class OrderResponseDTO {
     private BigDecimal totalAmount;
     private BigDecimal shippingFee;
     private BigDecimal discountAmount;
+    private String couponCode;
     private BigDecimal finalAmount;
     private String shippingAddress;
     private String note;

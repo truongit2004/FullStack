@@ -4,15 +4,37 @@ server:
 spring:
   application:
     name: API-Gateway
+  codec:
+    max-in-memory-size: 15MB
   cloud:
     gateway:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "*"
+            # Dùng pattern (không dùng allowedOrigins: "*") vì "*" không được phép đi cùng allowCredentials
+            allowedOriginPatterns: "*"
             allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: true
+      # Chat Service (SockJS) tự gắn header CORS; Gateway cũng gắn -> bị trùng, trình duyệt từ chối.
+      # Giữ lại 1 giá trị cho mỗi header.
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+        # Service đích vừa chết hoặc đang khởi động lại: thử lại tối đa 2 lần (mỗi lần cân bằng tải chọn lại bản chạy).
+        # CHỈ áp dụng cho GET — thử lại POST/PUT/DELETE có thể làm một thao tác chạy 2 lần.
+        - name: Retry
+          args:
+            retries: 2
+            methods: GET
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+            backoff:
+              firstBackoff: 200ms
+              maxBackoff: 1s
+              factor: 2
+      # Không chờ service đích vô thời hạn: 3 giây để kết nối, 30 giây chờ phản hồi (quá thì trả 504)
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 30s
       routes:
         - id: cart-service
           uri: lb://CartService
@@ -66,6 +88,9 @@ spring:
           uri: lb://CHAT-SERVICE
           predicates:
             - Path=/ws/**, /api/chat/**
+          # Kết nối chat (WebSocket / SockJS) được giữ lâu: không áp giới hạn 30 giây chờ phản hồi
+          metadata:
+            response-timeout: -1
 
         - id: review-service
           uri: lb://review-service
@@ -87,6 +112,16 @@ spring:
           predicates:
             - Path=/api/search/**
 
+        - id: point-service
+          uri: lb://point-service
+          predicates:
+            - Path=/api/points/**
+
+        - id: coupon-service
+          uri: lb://coupon-service
+          predicates:
+            - Path=/api/coupons/**
+
   # Redis Configuration for Rate Limiting
   data:
     redis:
@@ -97,6 +132,8 @@ eureka:
   client:
     serviceUrl:
       defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    # Cập nhật danh sách service từ Eureka mỗi 10 giây (mặc định 30) để sớm bỏ bản đã chết
+    registry-fetch-interval-seconds: 10
 
 # JWT Configuration (Shared with other services)
 jwt:

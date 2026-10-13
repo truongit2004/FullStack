@@ -28,9 +28,20 @@ public class JwtGatewayFilter implements GlobalFilter {
             return chain.filter(exchange);
         }
 
+        // 1.2 WebSocket/SockJS của Chat Service: trình duyệt không gửi được header Authorization
+        //     khi bắt tay, nên cho qua ở đây — Chat Service tự kiểm tra JWT ở frame STOMP CONNECT.
+        if (path.equals("/ws") || path.startsWith("/ws/")) {
+            return chain.filter(exchange);
+        }
+
         // 1.5 Cho phép Khách (Guest) tự do xem Sản phẩm, Danh mục, Lịch sử Review
         if ((path.contains("/api/products") || path.contains("/api/categories") || path.contains("/api/reviews")) 
             && method == HttpMethod.GET) {
+            return chain.filter(exchange);
+        }
+
+        // 1.6 Tìm kiếm sản phẩm (Search Service / Elasticsearch) cũng mở cho khách, giống xem sản phẩm
+        if (path.equals("/api/search/products") && method == HttpMethod.GET) {
             return chain.filter(exchange);
         }
 
@@ -74,6 +85,71 @@ public class JwtGatewayFilter implements GlobalFilter {
                             exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN); // 403
                             return exchange.getResponse().setComplete();
                         }
+                    }
+                }
+
+                // --- 4.5 PHÂN QUYỀN CHO USER SERVICE (Danh sách & Xoá người dùng) ---
+                if (path.equals("/api/users") && method == HttpMethod.GET) {
+                    if (!"ADMIN".equalsIgnoreCase(role)) {
+                        System.out.println("DEBUG Gateway: Forbidden for role " + role + " on path " + path);
+                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                        return exchange.getResponse().setComplete();
+                    }
+                }
+                if (path.startsWith("/api/users/") && method == HttpMethod.DELETE) {
+                    if (!"ADMIN".equalsIgnoreCase(role)) {
+                        System.out.println("DEBUG Gateway: Forbidden for role " + role + " on path " + path);
+                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                        return exchange.getResponse().setComplete();
+                    }
+                }
+
+                // --- 4.55 SEARCH SERVICE: nạp lại toàn bộ chỉ mục là thao tác quản trị -> ADMIN ---
+                if (path.startsWith("/api/search/sync")) {
+                    if (!"ADMIN".equalsIgnoreCase(role)) {
+                        System.out.println("DEBUG Gateway: Forbidden for role " + role + " on path " + path);
+                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                        return exchange.getResponse().setComplete();
+                    }
+                }
+
+                // --- 4.6 PHÂN QUYỀN CHO POINT SERVICE ---
+                if (path.startsWith("/api/points")) {
+                    // earn/redeem/reverse là API nội bộ (Order Service gọi thẳng qua Feign, không qua Gateway)
+                    // -> chặn mọi lệnh ghi từ bên ngoài, kể cả ADMIN
+                    if (method != HttpMethod.GET) {
+                        System.out.println("DEBUG Gateway: Forbidden write to point service on path " + path);
+                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                        return exchange.getResponse().setComplete();
+                    }
+                    // Xem số dư/lịch sử: /api/points/{userId}[/history] -> chỉ chủ sở hữu hoặc ADMIN
+                    String[] pathParts = path.split("/");
+                    String targetUserId = pathParts.length > 3 ? pathParts[3] : null;
+                    // /api/points/config (quy tắc điểm) -> mọi user đã đăng nhập đều xem được
+                    boolean isConfig = path.equals("/api/points/config");
+                    if (!isConfig && !"ADMIN".equalsIgnoreCase(role) && (targetUserId == null || !targetUserId.equals(userId))) {
+                        System.out.println("DEBUG Gateway: Forbidden point lookup for " + targetUserId + " by " + userId);
+                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                        return exchange.getResponse().setComplete();
+                    }
+                }
+
+                // --- 4.7 PHÂN QUYỀN CHO COUPON SERVICE (MÃ GIẢM GIÁ) ---
+                if (path.startsWith("/api/coupons")) {
+                    boolean customerApi = method == HttpMethod.GET
+                            && (path.equals("/api/coupons/preview") || path.equals("/api/coupons/available"));
+                    // Dùng mã / hoàn mã là API nội bộ (Order Service gọi thẳng qua Feign, không qua Gateway)
+                    boolean internalApi = path.equals("/api/coupons/redeem") || path.endsWith("/reverse");
+                    if (internalApi) {
+                        System.out.println("DEBUG Gateway: Forbidden internal coupon API on path " + path);
+                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                        return exchange.getResponse().setComplete();
+                    }
+                    // Xem trước và danh sách mã đang có: mọi khách đã đăng nhập. Còn lại (tạo, sửa, bật/tắt, xem tất cả) -> ADMIN
+                    if (!customerApi && !"ADMIN".equalsIgnoreCase(role)) {
+                        System.out.println("DEBUG Gateway: Forbidden for role " + role + " on path " + path);
+                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                        return exchange.getResponse().setComplete();
                     }
                 }
 

@@ -20,9 +20,12 @@ public class ProductRatingConsumer {
 
     @KafkaListener(topics = "product-rating-topic", groupId = "product-service-group")
     @Transactional
-    public void listenProductRating(String message) {
+    // Không bắt lỗi ở đây: để lỗi nổi lên cho DefaultErrorHandler (ResilienceConfig) thử lại,
+    // hết số lần thì chuyển tin sang "<topic>.DLT" thay vì âm thầm bỏ mất.
+    // Lỗi thì transaction rollback, nên thử lại không cộng điểm đánh giá 2 lần.
+    public void listenProductRating(String message) throws Exception {
         log.info("📥 Received rating update message: {}", message);
-        try {
+        {
             JsonNode jsonNode = objectMapper.readTree(message);
             String productId = jsonNode.get("productId").asText();
             int newRating = jsonNode.get("rating").asInt();
@@ -33,8 +36,6 @@ public class ProductRatingConsumer {
                 log.info("⭐ Updated product {} average rating to {} (Total reviews: {})", 
                         product.getName(), product.getAverageRating(), product.getReviewCount());
             });
-        } catch (Exception e) {
-            log.error("❌ Error processing Kafka message: {}", e.getMessage());
         }
     }
 

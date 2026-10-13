@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ClaudeCodeEditorTabs">
+    <option name="activeSessionId" value="c0328025-91de-458e-a4de-1b929d7c6c8c" />
+    <option name="openSessionIds">
+      <list>
+        <option value="225ec97f-56b6-46df-8c06-6c65a66822ca" />
+        <option value="03dc6f6b-b35e-42cd-86f7-8c4658616017" />
+        <option value="c0328025-91de-458e-a4de-1b929d7c6c8c" />
+      </list>
+    </option>
+    <option name="sessionPaths">
+      <map>
+        <entry key="225ec97f-56b6-46df-8c06-6c65a66822ca" value="/sessions/new" />
+        <entry key="c0328025-91de-458e-a4de-1b929d7c6c8c" value="/sessions/ac6d29a1-5c60-4677-bae0-d3cf2addb69c" />
+      </map>
+    </option>
+    <option name="sessionTitles">
+      <map>
+        <entry key="225ec97f-56b6-46df-8c06-6c65a66822ca" value="Claude Code" />
+        <entry key="c0328025-91de-458e-a4de-1b929d7c6c8c" value="hãy mô tả cho tôi các công nghệ và nghiệp vụ chính" />
+      </map>
+    </option>
+  </component>
+</project>

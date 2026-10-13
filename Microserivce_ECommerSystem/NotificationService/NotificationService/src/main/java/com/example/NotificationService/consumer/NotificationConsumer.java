@@ -18,9 +18,12 @@ public class NotificationConsumer {
     private final com.example.NotificationService.client.UserClient userClient;
 
     @KafkaListener(topics = {"payment-success-topic", "order-placed-topic"}, groupId = "notification-group")
-    public void consume(String message) {
+    // Không bắt lỗi ở đây: để lỗi nổi lên cho DefaultErrorHandler (ResilienceConfig) thử lại,
+    // hết số lần thì chuyển tin sang "<topic>.DLT" thay vì âm thầm bỏ mất.
+    // Email là bước cuối cùng nên thử lại không gửi trùng: lỗi xảy ra trước khi mail được gửi đi.
+    public void consume(String message) throws Exception {
         log.info("🔔 Nhận tin nhắn từ Kafka: {}", message);
-        try {
+        {
             NotificationEvent event = objectMapper.readValue(message, NotificationEvent.class);
             
             // 1. Lấy thông tin chi tiết đơn hàng (để lấy userId)
@@ -69,8 +72,6 @@ public class NotificationConsumer {
                 log.warn("⚠️ Không thể tìm thấy Email cho đơn hàng {}, hủy lệnh gửi mail.", event.getOrderId());
             }
 
-        } catch (Exception e) {
-            log.error("❌ Lỗi khi xử lý thông tin gửi mail: {}", e.getMessage());
         }
     }
 }

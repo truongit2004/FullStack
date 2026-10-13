@@ -1,8 +1,6 @@
 package com.example.PaymentService.controller;
 
 import com.example.PaymentService.client.OrderClient;
-import com.example.PaymentService.entity.PaymentRecordEntity;
-import com.example.PaymentService.repository.PaymentRecordRepository;
 import com.example.PaymentService.service.PaymentService;
 import com.example.PaymentService.config.VNPayConfig;
 import com.example.PaymentService.util.VNPayUtils;
@@ -12,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -26,9 +23,8 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final OrderClient orderClient;
-    private final PaymentRecordRepository paymentRecordRepository;
     private final VNPayConfig vnPayConfig;
-    private final org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
+    private final com.example.PaymentService.service.PaymentCompletionService paymentCompletionService;
 
     @GetMapping("/create-vnpay-url")
     public ResponseEntity<Map<String, String>> createPayment(
@@ -150,35 +146,6 @@ public class PaymentController {
     }
 
     private void processSuccessPayment(String orderId, String transactionId, String vnpAmount) {
-        log.info("Processing success payment for order: {}", orderId);
-        orderClient.markOrderAsPaid(orderId);
-
-        BigDecimal finalAmount = vnpAmount != null ? new BigDecimal(vnpAmount).divide(new BigDecimal(100))
-                : BigDecimal.ZERO;
-
-        paymentRecordRepository.save(PaymentRecordEntity.builder()
-                .orderId(orderId)
-                .transactionId(transactionId)
-                .amount(finalAmount)
-                .paymentMethod("VNPAY_SIMULATED")
-                .responseCode("00")
-                .status("SUCCESS")
-                .build());
-
-        try {
-            if (kafkaTemplate != null) {
-                com.example.PaymentService.dto.NotificationEvent event = com.example.PaymentService.dto.NotificationEvent.builder()
-                        .orderId(orderId)
-                        .amount(vnpAmount)
-                        .status("SUCCESS")
-                        .type("PAYMENT_SUCCESS") // Thêm phân loại
-                        .build();
-                String jsonEvent = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(event);
-                kafkaTemplate.send("payment-success-topic", jsonEvent);
-                log.info("Sent payment success notification to Kafka");
-            }
-        } catch (Exception e) {
-            log.error("Failed to send Kafka notification (Kafka might be disabled): {}", e.getMessage());
-        }
+        paymentCompletionService.recordSuccess(orderId, transactionId, vnpAmount);
     }
 }

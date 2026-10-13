@@ -24,4 +24,6 @@ public class OrderRequestDTO {
     private String note;
     private BigDecimal shippingFee;
     private BigDecimal discountAmount;
+    private BigDecimal pointsToRedeem; // Số điểm khách muốn dùng để giảm giá đơn này (tối đa 50% totalAmount)
+    private String couponCode;         // Mã giảm giá khách nhập. KHÔNG dùng chung với pointsToRedeem.
 }

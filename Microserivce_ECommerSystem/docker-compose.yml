@@ -110,6 +110,36 @@ services:
       timeout: 20s
       retries: 10
 
+  point-db:
+    image: mysql:8.0
+    container_name: point-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: point_service
+    ports:
+      - "33068:3306"
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  coupon-db:
+    image: mysql:8.0
+    container_name: coupon-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: coupon_service
+    ports:
+      - "33069:3306"
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
   chat-db:
     image: mongo:latest
     container_name: chat-db
@@ -306,6 +336,7 @@ services:
       - "8084:8084"
     environment:
       - EUREKA_HOST=eureka-server
+      - KAFKA_HOST=kafka:29092
       - SPRING_DATASOURCE_URL=jdbc:mysql://order-db:3306/order_db?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_PASSWORD=root
     depends_on:
@@ -313,6 +344,8 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - ecommerce-network
 
@@ -465,6 +498,7 @@ services:
       - ELASTICSEARCH_HOST=elasticsearch
       - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
       - KAFKA_HOST=kafka:29092
+      - PRODUCT_SERVICE_URL=http://product-service:8082
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -472,6 +506,47 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  point-service:
+    build:
+      context: ./PointService/PointService
+      dockerfile: Dockerfile
+    container_name: point-service
+    ports:
+      - "8095:8095"
+    environment:
+      - EUREKA_HOST=eureka-server
+      - KAFKA_HOST=kafka:29092
+      - SPRING_DATASOURCE_URL=jdbc:mysql://point-db:3306/point_service?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_PASSWORD=root
+    depends_on:
+      point-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  coupon-service:
+    build:
+      context: ./CouponService/CouponService
+      dockerfile: Dockerfile
+    container_name: coupon-service
+    ports:
+      - "8096:8096"
+    environment:
+      - EUREKA_HOST=eureka-server
+      - SPRING_DATASOURCE_URL=jdbc:mysql://coupon-db:3306/coupon_service?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_PASSWORD=root
+    depends_on:
+      coupon-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
     networks:
       - ecommerce-network
 

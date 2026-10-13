@@ -52,6 +52,9 @@ const Login = () => {
                             placeholder="Enter your password"
                         />
                     </div>
+                    <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+                        <Link to="/forgot-password" style={{ fontSize: '0.85rem' }}>Forgot password?</Link>
+                    </div>
                     <button type="submit" disabled={loadingMsg}>
                         {loadingMsg ? 'Đang xác thực...' : 'Sign In'}
                     </button>

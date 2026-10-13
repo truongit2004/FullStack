@@ -1,0 +1,3 @@
+com\example\NotificationService\dto\PasswordResetEmailRequest$PasswordResetEmailRequestBuilder.class
+com\example\NotificationService\config\ResilienceConfig.class
+com\example\NotificationService\dto\PasswordResetEmailRequest.class

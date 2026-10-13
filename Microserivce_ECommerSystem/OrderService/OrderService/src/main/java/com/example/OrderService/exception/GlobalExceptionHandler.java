@@ -1,6 +1,7 @@
 package com.example.OrderService.exception;
 
 import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,6 +14,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AppException.class)
     public ResponseEntity<Map<String, Object>> handleAppException(AppException ex) {
         ErrorCode code = ex.getErrorCode();
+        return ResponseEntity
+                .status(code.getHttpStatus())
+                .body(Map.of(
+                        "code",    code.getHttpStatus(),
+                        "message", ex.getMessage() != null ? ex.getMessage() : code.getMessage()
+                ));
+    }
+
+    /** Mạch đang ngắt: service kia vừa lỗi liên tục nên tạm ngừng gọi tới nó, trả lỗi ngay thay vì chờ. */
+    @ExceptionHandler(CallNotPermittedException.class)
+    public ResponseEntity<Map<String, Object>> handleCircuitOpen(CallNotPermittedException ex) {
+        ErrorCode code = ErrorCode.SERVICE_UNAVAILABLE;
         return ResponseEntity
                 .status(code.getHttpStatus())
                 .body(Map.of(

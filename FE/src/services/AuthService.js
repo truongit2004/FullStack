@@ -22,6 +22,20 @@ class AuthService {
             headers: { Authorization: `Bearer ${token}` }
         });
     }
+
+    async forgotPassword(email) {
+        return await axios.post(`${BASE}/auth/forgot-password`, { email });
+    }
+
+    async resetPassword(email, otp, newPassword) {
+        return await axios.post(`${BASE}/auth/reset-password`, { email, otp, newPassword });
+    }
+
+    async changePassword(token, oldPassword, newPassword) {
+        return await axios.put(`${BASE}/auth/change-password`, { oldPassword, newPassword }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+    }
 }
 
 export default new AuthService();

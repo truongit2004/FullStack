@@ -1,0 +1,74 @@
+# api-gateway — cổng 8085
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  labels:
+    app: api-gateway
+    tier: infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        tier: infra
+    spec:
+      # Tắt việc Kubernetes tự chèn biến kiểu REDIS_PORT=tcp://10.x.x.x:6379 cho mỗi Service:
+      # các biến đó trùng tên với biến mà application.yml của dự án đang đọc và làm hỏng cấu hình.
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: api-gateway
+          image: ecommerce/api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: ecommerce-config
+            - secretRef:
+                name: ecommerce-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 320Mi
+            limits:
+              memory: 640Mi
+          # Dự án chưa có spring-boot-starter-actuator nên dùng kiểm tra cổng TCP.
+          # startupProbe cho ứng dụng tối đa 5 phút để khởi động trước khi bị coi là hỏng.
+          startupProbe:
+            tcpSocket:
+              port: 8085
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket:
+              port: 8085
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8085
+            periodSeconds: 20
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              # Chờ Eureka và Gateway ngừng gửi request tới pod này rồi mới tắt
+              exec:
+                command: ["sleep", "15"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  labels:
+    app: api-gateway
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - port: 8085
+      targetPort: 8085

@@ -18,4 +18,6 @@ public class OrderRequestDTO {
     private String note;
     private BigDecimal shippingFee;
     private BigDecimal discountAmount;
+    private BigDecimal pointsToRedeem;
+    private String couponCode;
 }

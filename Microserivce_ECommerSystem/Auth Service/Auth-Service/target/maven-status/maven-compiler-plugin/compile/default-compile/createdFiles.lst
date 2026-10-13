@@ -1,0 +1,8 @@
+com\example\Auth\Service\dto\ChangePasswordRequest.class
+com\example\Auth\Service\dto\ForgotPasswordRequest.class
+com\example\Auth\Service\dto\PasswordResetEmailRequest.class
+com\example\Auth\Service\dto\UpdatePasswordRequest.class
+com\example\Auth\Service\dto\ResetPasswordRequest.class
+com\example\Auth\Service\exception\ResilienceExceptionHandler.class
+com\example\Auth\Service\config\ResilienceConfig.class
+com\example\Auth\Service\client\NotificationClient.class

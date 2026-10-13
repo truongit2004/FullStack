@@ -1,0 +1,77 @@
+# point-service — cổng 8095, database MySQL "point_service"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: point-service
+  labels:
+    app: point-service
+    tier: service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: point-service
+  template:
+    metadata:
+      labels:
+        app: point-service
+        tier: service
+    spec:
+      # Tắt việc Kubernetes tự chèn biến kiểu REDIS_PORT=tcp://10.x.x.x:6379 cho mỗi Service:
+      # các biến đó trùng tên với biến mà application.yml của dự án đang đọc và làm hỏng cấu hình.
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: point-service
+          image: ecommerce/point-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8095
+          envFrom:
+            - configMapRef:
+                name: ecommerce-config
+            - secretRef:
+                name: ecommerce-secret
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/point_service?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+          resources:
+            requests:
+              cpu: 100m
+              memory: 320Mi
+            limits:
+              memory: 640Mi
+          # Dự án chưa có spring-boot-starter-actuator nên dùng kiểm tra cổng TCP.
+          # startupProbe cho ứng dụng tối đa 5 phút để khởi động trước khi bị coi là hỏng.
+          startupProbe:
+            tcpSocket:
+              port: 8095
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket:
+              port: 8095
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8095
+            periodSeconds: 20
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              # Chờ Eureka và Gateway ngừng gửi request tới pod này rồi mới tắt
+              exec:
+                command: ["sleep", "15"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: point-service
+  labels:
+    app: point-service
+spec:
+  selector:
+    app: point-service
+  ports:
+    - port: 8095
+      targetPort: 8095

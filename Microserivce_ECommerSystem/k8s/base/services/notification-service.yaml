@@ -1,0 +1,74 @@
+# notification-service — cổng 8090
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  labels:
+    app: notification-service
+    tier: service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+        tier: service
+    spec:
+      # Tắt việc Kubernetes tự chèn biến kiểu REDIS_PORT=tcp://10.x.x.x:6379 cho mỗi Service:
+      # các biến đó trùng tên với biến mà application.yml của dự án đang đọc và làm hỏng cấu hình.
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: notification-service
+          image: ecommerce/notification-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+          envFrom:
+            - configMapRef:
+                name: ecommerce-config
+            - secretRef:
+                name: ecommerce-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 320Mi
+            limits:
+              memory: 640Mi
+          # Dự án chưa có spring-boot-starter-actuator nên dùng kiểm tra cổng TCP.
+          # startupProbe cho ứng dụng tối đa 5 phút để khởi động trước khi bị coi là hỏng.
+          startupProbe:
+            tcpSocket:
+              port: 8090
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket:
+              port: 8090
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8090
+            periodSeconds: 20
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              # Chờ Eureka và Gateway ngừng gửi request tới pod này rồi mới tắt
+              exec:
+                command: ["sleep", "15"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  labels:
+    app: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 8090
+      targetPort: 8090

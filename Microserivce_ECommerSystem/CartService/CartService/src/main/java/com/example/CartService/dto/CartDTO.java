@@ -40,6 +40,12 @@ public class CartDTO {
         
         @NotNull(message = "Số tiền giảm giá không được để trống")
         private java.math.BigDecimal discountAmount;
+
+        // Số điểm thưởng muốn dùng cho đơn này (tuỳ chọn) — Order Service kiểm tra giới hạn và trừ điểm
+        private java.math.BigDecimal pointsToRedeem;
+
+        // Mã giảm giá khách nhập (tuỳ chọn) — Order Service kiểm tra và áp dụng; không dùng chung với điểm
+        private String couponCode;
     }
 
     // ── Response trả về client ──────────────────────────────

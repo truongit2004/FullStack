@@ -24,6 +24,13 @@ public class PaymentRecordEntity {
     private String transactionId; // VNPay Transaction ID
     private String responseCode; // 00 = Success
     private String status; // PENDING, SUCCESS, FAILED
+
+    // Order Service đã được báo "đơn đã thanh toán" chưa. false = còn nợ, PaymentCompletionService sẽ tự thử lại.
+    // null ở các bản ghi cũ (tạo trước khi có cột này) được coi là đã xong.
+    private Boolean orderSynced;
+    private Integer syncAttempts;
+    @Column(length = 500)
+    private String lastSyncError;
     
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

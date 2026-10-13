@@ -18,15 +18,18 @@ public class ChatMessage {
 
     @Id
     private String id;
-    
+
     private String senderId;
     private String recipientId; // Can be a UserId or ShopId
-    
+
+    // Tên hiển thị của người gửi (username của khách, hoặc của nhân viên hỗ trợ đã trả lời)
+    private String senderName;
+
     private String content;
-    
+
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
-    
+
     // Status can be DELIVERED, READ, etc.
     @Builder.Default
     private String status = "SENT";
